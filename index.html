@@ -22,7 +22,6 @@
         .tab-inactive { color: #6b7280; font-weight: 500; }
         .tab-inactive:hover { color: #374151; border-bottom: 3px solid #d1d5db; background-color: #f9fafb; }
         
-        /* ซ่อน Scrollbar สำหรับแถบเมนูในมือถือ แต่ยังปัดเลื่อนได้ */
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; scroll-behavior: smooth; }
         
@@ -32,32 +31,41 @@
         }
     </style>
 
-    <!-- Firebase Init -->
     <script type="module">
         import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword,
+            onAuthStateChanged,
+            signOut,
+            signInAnonymously
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import {
             getFirestore, doc, getDoc, addDoc, setDoc, deleteDoc,
             collection, getDocs
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
-            apiKey: "AIzaSyBtj-K0o4wgJWrlK1NY-wqpUdzatqzXEnw",
-            authDomain: "investigation-b8b3a.firebaseapp.com",
-            projectId: "investigation-b8b3a",
-            storageBucket: "investigation-b8b3a.firebasestorage.app",
-            messagingSenderId: "913418532683",
-            appId: "1:913418532683:web:058ae422ef17f023509ace",
-            measurementId: "G-E5FXKET5GS"
-        };
+  apiKey: "AIzaSyCLXW_cr-5VuaQqR3wHNtBtHe5YJ77buno",
+  authDomain: "ssdinvestigation.firebaseapp.com",
+  projectId: "ssdinvestigation",
+  storageBucket: "ssdinvestigation.firebasestorage.app",
+  messagingSenderId: "766454429471",
+  appId: "1:766454429471:web:0c39c356899a8b5013222a",
+  measurementId: "G-102F02SH8Q"
+};
 
         window.initFirebase = async () => {
             try {
                 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
                 const auth = getAuth(app);
                 const db = getFirestore(app);
-                if (!auth.currentUser) await signInAnonymously(auth);
-                return { db, auth, appId: "investigation-b8b3a", collection, addDoc, setDoc, getDoc, getDocs, deleteDoc, doc };
+                return { 
+                    db, auth, appId: "investigation-b8b3a", 
+                    collection, addDoc, setDoc, getDoc, getDocs, deleteDoc, doc,
+                    signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously
+                };
             } catch (error) {
                 console.error("Firebase init error:", error);
                 throw error;
@@ -66,7 +74,6 @@
         window.firebaseReady = window.initFirebase();
     </script>
 
-    <!-- Local Storage System -->
     <script>
         window.CASE_STORAGE_KEY = 'ssd_investigation_cases_v2';
         window.getLocalCases = function() {
@@ -93,7 +100,6 @@
     <div id="root"><div style="font-family:Sarabun,sans-serif;padding:40px;text-align:center;color:#475569">กำลังโหลดระบบ...</div></div>
 
     <script type="text/babel">
-        // หมวดหมู่และฟิลด์ข้อมูลพื้นฐาน
         const initialCategories = [
             { id: 'cat1', title: "1. ข้อมูลทะเบียนราษฎร์", fields: [{ id: '1_1', label: "ชื่อ สกุล ภาษาไทย" }, { id: '1_2', label: "ชื่อ สกุล ภาษาอังกฤษ" }, { id: '1_3', label: "เลขบัตรประชาชน" }, { id: '1_4', label: "ชื่อ สกุล เดิม" }, { id: '1_5', label: "ชื่อ สกุล บิดา มารดา" }, { id: '1_6', label: "เลขบัตร ปชช. บิดามารดา" }, { id: '1_7', label: "ภูมิลำเนาที่อยู่ปัจจุบัน" }, { id: '1_8', label: "การเปลี่ยนชื่อ สกุล" }, { id: '1_9', label: "การเปลี่ยนที่อยู่" }] },
             { id: 'cat2', title: "2. ครอบครัว / เครือญาติ", fields: [{ id: '2_1', label: "บิดา/มารดา/ปู่/ย่า/ตา/ยาย" }, { id: '2_2', label: "สามี/ภรรยา" }, { id: '2_3', label: "บุตร/หลาน" }, { id: '2_4', label: "พี่น้อง/ลูกพี่ลูกน้อง" }, { id: '2_5', label: "เพื่อนสนิท" }] },
@@ -112,8 +118,7 @@
             { id: 'cat15', title: "15. ข้อมูลการขอใช้ไฟฟ้า/ประปา", fields: [{id: '15_1', label: 'ข้อมูลผู้จดทะเบียน'}, {id: '15_2', label: 'ที่ตั้งสถานที่'}, {id: '15_3', label: 'ผู้ชำระค่าไฟ/น้ำ'}, {id: '15_4', label: 'ช่องทางการชำระ'}] }
         ];
 
-        function ChecklistApp() {
-            // States
+        function ChecklistApp({ user, onLogout }) {
             const [activeTab, setActiveTab] = React.useState('checklist');
             const [currentCaseId, setCurrentCaseId] = React.useState(null);
             const [targetName, setTargetName] = React.useState('');
@@ -124,7 +129,7 @@
             const [customFieldInputs, setCustomFieldInputs] = React.useState({});
             const [isSaving, setIsSaving] = React.useState(false);
             
-            const [smartText, setSmartText] = React.useState(''); // สำหรับ Smart Extract
+            const [smartText, setSmartText] = React.useState(''); 
             
             const [searchQuery, setSearchQuery] = React.useState('');
             const [searchResults, setSearchResults] = React.useState([]);
@@ -137,23 +142,29 @@
             const [modalConfig, setModalConfig] = React.useState({ isOpen: false, title: '', message: '' });
             const [confirmModal, setConfirmModal] = React.useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
-            // Initial Load & Firebase Fetching
             const fetchAllHistory = async () => {
                 try {
                     const localList = window.getLocalCases().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-                    setAllCasesHistory(localList);
-
+                    
                     const fb = await window.initFirebase();
-                    if (!fb) return;
-                    const casesRef = fb.collection(fb.db, 'artifacts', fb.appId, 'public', 'data', 'cases');
-                    const snapshot = await fb.getDocs(casesRef);
+                    if (!fb || !user) {
+                         setAllCasesHistory(localList);
+                         return;
+                    }
+                    
+                    // ระบบใหม่: ดึงข้อมูลจากฐานข้อมูล "ส่วนตัว" ของ User คนนี้เท่านั้น
+                    const privateCasesRef = fb.collection(fb.db, 'artifacts', fb.appId, 'users', user.uid, 'cases');
+                    const snapshot = await fb.getDocs(privateCasesRef);
                     const remoteList = [];
                     snapshot.forEach(docSnap => {
                         remoteList.push({ id: docSnap.id, ...docSnap.data(), storage: 'firebase' });
                     });
                     remoteList.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
-                    setAllCasesHistory(remoteList);
+                    
+                    // รวมข้อมูลที่อยู่ในเครื่อง(ถ้ามี) และบนคลาวด์
+                    setAllCasesHistory(remoteList.length > 0 ? remoteList : localList);
                 } catch (e) {
+                    console.error(e);
                     setAllCasesHistory(window.getLocalCases());
                 }
             };
@@ -171,6 +182,8 @@
                                     showModal('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้');
                                     return;
                                 }
+                                
+                                // สำหรับการเปิดลิงก์แชร์ ต้องไปอ่านที่ Public Data เสมอ
                                 const docRef = fb.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'cases', sharedCaseId);
                                 const docSnap = await fb.getDoc(docRef);
 
@@ -185,7 +198,7 @@
                                     
                                     setIsSharedView(true);
                                     setActiveTab('mindmap');
-                                    showModal('โหลดข้อมูลสำเร็จ', 'เปิดข้อมูลร่วมกันแล้ว — ผู้ใช้งานที่ได้รับลิงก์สามารถแก้ไขและบันทึกข้อมูลได้');
+                                    showModal('โหลดข้อมูลสำเร็จ', 'เปิดข้อมูลร่วมกันแล้ว — ผู้ใช้งานที่ได้รับลิงก์สามารถแก้ไขข้อมูลชุดที่แชร์ได้');
                                 } else {
                                     showModal('ไม่พบข้อมูล', 'ลิงก์แชร์นี้อาจหมดอายุหรือไม่พบในระบบ');
                                 }
@@ -201,15 +214,13 @@
                     }
                 };
                 loadSharedData();
-            }, []);
+            }, [user]);
 
-            // UI Actions
             const showModal = (title, message) => setModalConfig({ isOpen: true, title, message });
             const closeModal = () => setModalConfig({ isOpen: false, title: '', message: '' });
             const showConfirm = (title, message, onConfirm) => setConfirmModal({ isOpen: true, title, message, onConfirm });
             const closeConfirm = () => setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null });
 
-            // Form Actions
             const handleAddValue = (fieldId) => {
                 const currentValues = formData[fieldId] || [''];
                 setFormData({ ...formData, [fieldId]: [...currentValues, ''] });
@@ -256,7 +267,6 @@
                 showModal('สถานะระบบ', 'โหลดข้อมูลจำลองสำเร็จ');
             };
 
-            // ระบบผู้ช่วยคัดแยกข้อมูลอัตโนมัติ (Smart Extract)
             const handleSmartExtract = () => {
                 if(!smartText.trim()) {
                     showModal('แจ้งเตือน', 'กรุณาวางข้อความที่ต้องการแยกลงในกล่องก่อนครับ');
@@ -299,41 +309,48 @@
                 }
             };
 
-            // ระบบออกจากระบบ (Logout)
-            const handleLogout = () => {
-                showConfirm('🚪 ยืนยันการออกจากระบบ', 'คุณต้องการออกจากระบบใช่หรือไม่?\n(ข้อมูลที่ยังไม่ได้กดบันทึกจะสูญหาย)', () => {
-                    sessionStorage.removeItem('cibssd_logged_in');
-                    window.location.reload(); 
-                });
-            };
-
-            // Data Core (Save, Delete, Load)
             const handleSave = async () => {
                 if (!targetName.trim() && !caseNumber.trim()) {
                     showModal('แจ้งเตือน', 'กรุณากรอก "ชื่อ-สกุล เป้าหมาย" หรือ "เลขคดี / หมายจับ" ก่อนบันทึก');
                     return;
                 }
+                
+                if (!user) {
+                    showModal('แจ้งเตือน', 'กรุณาเข้าสู่ระบบก่อนทำการบันทึกข้อมูลออนไลน์');
+                    return;
+                }
+
                 setIsSaving(true);
                 try {
                     const now = Date.now();
                     const localId = currentCaseId || ('local_' + now + '_' + Math.random().toString(36).slice(2, 8));
                     const payload = { targetName: targetName.trim(), caseNumber: caseNumber.trim(), officerName: officerName.trim(), formData, categories, updatedAt: now };
 
+                    // บันทึกลง Local Storage ไว้สำรองเสมอ
                     const localSaved = window.saveLocalCase(payload, localId);
                     setCurrentCaseId(currentCaseId || localSaved.id);
 
                     const fb = await window.initFirebase();
                     let onlineSaved = false;
+                    
                     if (fb) {
-                        const casesRef = fb.collection(fb.db, 'artifacts', fb.appId, 'public', 'data', 'cases');
-                        if (currentCaseId && !String(currentCaseId).startsWith('local_')) {
-                            const docRef = fb.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'cases', currentCaseId);
-                            await fb.setDoc(docRef, payload, { merge: true });
+                        // แยกการบันทึก: ถ้าเป็นการดูลิงก์แชร์ ให้บันทึกทับไฟล์แชร์, แต่ถ้าทำงานส่วนตัว ให้บันทึกลงโฟลเดอร์ส่วนตัว
+                        if (isSharedView) {
+                            const publicDocRef = fb.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'cases', currentCaseId);
+                            await fb.setDoc(publicDocRef, payload, { merge: true });
                             onlineSaved = true;
                         } else {
-                            const docRef = await fb.addDoc(casesRef, { ...payload, createdAt: now });
-                            setCurrentCaseId(docRef.id);
-                            onlineSaved = true;
+                            // ระบบส่วนบุคคล: บันทึกลง Path ของ User
+                            const privateCasesRef = fb.collection(fb.db, 'artifacts', fb.appId, 'users', user.uid, 'cases');
+                            if (currentCaseId && !String(currentCaseId).startsWith('local_')) {
+                                const docRef = fb.doc(fb.db, 'artifacts', fb.appId, 'users', user.uid, 'cases', currentCaseId);
+                                await fb.setDoc(docRef, payload, { merge: true });
+                                onlineSaved = true;
+                            } else {
+                                const docRef = await fb.addDoc(privateCasesRef, { ...payload, createdAt: now });
+                                setCurrentCaseId(docRef.id);
+                                onlineSaved = true;
+                            }
                         }
                     }
                     if (onlineSaved) {
@@ -346,7 +363,7 @@
                         });
                     }
                     setIsSaving(false);
-                    showModal('บันทึกสำเร็จ', onlineSaved ? 'บันทึกข้อมูลลงระบบออนไลน์และในเครื่องเรียบร้อยแล้ว' : 'บันทึกข้อมูลลงในเครื่องแล้ว');
+                    showModal('บันทึกสำเร็จ', onlineSaved ? 'บันทึกข้อมูลลงฐานข้อมูลสำเร็จ' : 'บันทึกข้อมูลลงในเครื่องแล้ว');
                 } catch (error) {
                     setIsSaving(false); showModal('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกได้: ' + error.message);
                 }
@@ -356,6 +373,7 @@
                 setCurrentCaseId(caseData.id || null); setTargetName(caseData.targetName || '');
                 setCaseNumber(caseData.caseNumber || ''); setOfficerName(caseData.officerName || '');
                 setFormData(caseData.formData || {}); if (caseData.categories) setCategories(caseData.categories);
+                setIsSharedView(false); // เมื่อโหลดจากประวัติ ถือว่าเป็นข้อมูลส่วนตัว
                 setActiveTab(tab); showModal('โหลดข้อมูลสำเร็จ', `ดึงข้อมูลของ "${caseData.targetName || 'ไม่ระบุชื่อ'}" เรียบร้อยแล้ว`);
             };
 
@@ -371,8 +389,9 @@
                     try {
                         window.deleteLocalCase(caseId);
                         const fb = await window.initFirebase();
-                        if (fb && !String(caseId).startsWith('local_')) {
-                            const docRef = fb.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'cases', caseId);
+                        if (fb && !String(caseId).startsWith('local_') && user) {
+                            // ลบจากโฟลเดอร์ส่วนตัว
+                            const docRef = fb.doc(fb.db, 'artifacts', fb.appId, 'users', user.uid, 'cases', caseId);
                             await fb.deleteDoc(docRef);
                         }
                         setAllCasesHistory(prev => prev.filter(item => item.id !== caseId));
@@ -389,26 +408,31 @@
                 setIsSharing(true);
                 try {
                     const fb = await window.initFirebase();
-                    if (!fb) { showModal('เตือน', 'แชร์ออนไลน์ต้องเชื่อมต่อ Firebase ก่อน'); setIsSharing(false); return; }
-                    const payload = { targetName, caseNumber, officerName, formData, categories, updatedAt: Date.now() };
-                    let targetDocRef;
-                    if (currentCaseId && !String(currentCaseId).startsWith('local_')) {
-                        targetDocRef = fb.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'cases', currentCaseId);
-                        await fb.setDoc(targetDocRef, payload, { merge: true });
+                    if (!fb || !user) { showModal('เตือน', 'ต้องเข้าสู่ระบบก่อนแชร์ออนไลน์'); setIsSharing(false); return; }
+                    
+                    const payload = { targetName, caseNumber, officerName, formData, categories, updatedAt: Date.now(), sharedBy: user.email };
+                    
+                    // เพื่อให้คนอื่นเปิดดูได้ ต้องนำข้อมูลนี้ไปคัดลอกไว้ใน Public
+                    let sharedDocRef;
+                    
+                    if (isSharedView && currentCaseId && !String(currentCaseId).startsWith('local_')) {
+                        // อัพเดตลิงก์แชร์เดิม
+                        sharedDocRef = fb.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'cases', currentCaseId);
+                        await fb.setDoc(sharedDocRef, payload, { merge: true });
                     } else {
+                        // สร้างลิงก์แชร์ใหม่ใน Public
                         payload.createdAt = Date.now();
-                        targetDocRef = await fb.addDoc(fb.collection(fb.db, 'artifacts', fb.appId, 'public', 'data', 'cases'), payload);
-                        setCurrentCaseId(targetDocRef.id);
+                        sharedDocRef = await fb.addDoc(fb.collection(fb.db, 'artifacts', fb.appId, 'public', 'data', 'cases'), payload);
                     }
-                    const shareUrl = `${window.location.origin}${window.location.pathname}?caseId=${targetDocRef.id}`;
+                    
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?caseId=${sharedDocRef.id}`;
                     try { await navigator.clipboard.writeText(shareUrl); } catch (_) {
                         const textArea = document.createElement('textarea'); textArea.value = shareUrl;
                         document.body.appendChild(textArea); textArea.select(); document.execCommand('copy'); textArea.remove();
                     }
-                    await fetchAllHistory();
-                    showModal('แชร์สำเร็จ!', `คัดลอกลิงก์เรียบร้อยแล้ว\n\n${shareUrl}`);
+                    showModal('สร้างลิงก์แชร์สำเร็จ!', `คัดลอกลิงก์เรียบร้อยแล้ว\n(ลิงก์นี้บุคคลอื่นสามารถดูและแก้ไขร่วมกันได้)\n\n${shareUrl}`);
                 } catch (error) {
-                    showModal('เกิดข้อผิดพลาด', `แชร์ไม่ได้: ${error.message}`);
+                    showModal('เกิดข้อผิดพลาด', `สร้างลิงก์ไม่ได้: ${error.message}`);
                 } finally { setIsSharing(false); }
             };
 
@@ -419,8 +443,10 @@
                 try {
                     let source = window.getLocalCases();
                     const fb = await window.initFirebase();
-                    if (fb) {
-                        const snapshot = await fb.getDocs(fb.collection(fb.db, 'artifacts', fb.appId, 'public', 'data', 'cases'));
+                    if (fb && user) {
+                        // ค้นหาเฉพาะในข้อมูลส่วนตัว
+                        const privateCasesRef = fb.collection(fb.db, 'artifacts', fb.appId, 'users', user.uid, 'cases');
+                        const snapshot = await fb.getDocs(privateCasesRef);
                         source = [];
                         snapshot.forEach(docSnap => source.push({ id: docSnap.id, ...docSnap.data(), storage: 'firebase' }));
                     }
@@ -431,7 +457,7 @@
                         return t.includes(queryStr) || c.includes(queryStr) || o.includes(queryStr) || id.includes(queryStr);
                     });
                     setSearchResults(results);
-                    if (results.length === 0) showModal('ไม่พบข้อมูล', `ไม่พบเป้าหมายที่ตรงกับ "${searchQuery}"`);
+                    if (results.length === 0) showModal('ไม่พบข้อมูล', `ไม่พบเป้าหมายที่ตรงกับ "${searchQuery}" ในคลังส่วนตัวของคุณ`);
                 } catch (err) { showModal('ข้อผิดพลาด', err.message); }
                 setIsSearching(false);
             };
@@ -476,7 +502,6 @@
                 }).from(document.getElementById('dashboard-export-container')).save();
             };
 
-            // Mindmap logic
             React.useEffect(() => {
                 if (activeTab === 'mindmap') {
                     const container = document.getElementById('network-container');
@@ -508,10 +533,8 @@
                 }
             }, [activeTab, formData, categories, targetName]);
 
-            // Render Views
             const renderChecklist = () => (
                 <div className="space-y-4 md:space-y-6">
-                    {/* Smart Extract UI */}
                     <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 md:p-6 rounded-xl shadow-sm border border-purple-200">
                         <h3 className="text-purple-800 font-bold mb-2 flex items-center gap-2 text-sm md:text-base">
                             <span className="text-lg">✨</span> ผู้ช่วยแยกข้อมูลอัตโนมัติ (Smart Extract)
@@ -584,7 +607,7 @@
 
                     <div className="sticky bottom-4 z-10 flex justify-center pt-6 pb-6 w-full px-4">
                         <button onClick={handleSave} disabled={isSaving} className={`w-full max-w-md px-6 py-4 rounded-full font-bold text-white shadow-xl transition-all ${isSaving ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                            {isSaving ? 'กำลังบันทึก...' : (isSharedView ? '💾 บันทึกการแก้ไขร่วมกัน' : '💾 บันทึก Checklist')}
+                            {isSaving ? 'กำลังบันทึก...' : (isSharedView ? '💾 บันทึกทับลิงก์ที่แชร์' : '💾 บันทึกลงคลังส่วนตัว')}
                         </button>
                     </div>
                 </div>
@@ -595,8 +618,8 @@
                     <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
                         <h2 className="text-lg md:text-xl font-bold text-gray-800">แผนผังความเชื่อมโยง</h2>
                         <div className="flex gap-2 w-full sm:w-auto">
-                            <button onClick={handleShareOnline} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-semibold">🔗 แชร์</button>
-                            <button onClick={exportMindMapPDF} className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-semibold">📄 PDF</button>
+                            <button onClick={handleShareOnline} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-semibold">🔗 สร้างลิงก์แชร์</button>
+                            <button onClick={exportMindMapPDF} className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-semibold">📄 เซฟ PDF</button>
                         </div>
                     </div>
                     <div id="mindmap-export-container" className="p-2 md:p-4 bg-white">
@@ -626,8 +649,8 @@
                         <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
                             <h2 className="text-lg md:text-xl font-bold text-gray-800">สรุปข้อมูล (Dashboard)</h2>
                             <div className="flex gap-2 w-full sm:w-auto">
-                                <button onClick={handleShareOnline} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-semibold">🔗 แชร์</button>
-                                <button onClick={exportDashboardPDF} className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-semibold">📄 PDF</button>
+                                <button onClick={handleShareOnline} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-semibold">🔗 สร้างลิงก์แชร์</button>
+                                <button onClick={exportDashboardPDF} className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-semibold">📄 เซฟ PDF</button>
                             </div>
                         </div>
                         <div id="dashboard-export-container" className="p-2 md:p-4 bg-white">
@@ -664,8 +687,8 @@
             const renderSearch = () => (
                 <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
                     <div>
-                        <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-1">🔍 ค้นหาประวัติเป้าหมาย</h2>
-                        <p className="text-xs md:text-sm text-gray-500">ค้นหาด้วยชื่อ เลขคดี หรือบัตรประชาชน</p>
+                        <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-1">🔍 ค้นหาในคลังส่วนตัว</h2>
+                        <p className="text-xs md:text-sm text-gray-500">ค้นหาด้วยชื่อ เลขคดี หรือบัตรประชาชน (เฉพาะเคสของคุณ)</p>
                     </div>
                     <form onSubmit={handleSearchDatabase} className="flex flex-col sm:flex-row gap-3">
                         <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="พิมพ์คำค้นหา..." className="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-base focus:ring-2 focus:ring-blue-500" />
@@ -702,7 +725,10 @@
             const renderHistory = () => (
                 <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-100">
                     <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-3">
-                        <h2 className="text-lg md:text-xl font-bold text-gray-800">🕒 ประวัติทั้งหมด</h2>
+                        <div>
+                            <h2 className="text-lg md:text-xl font-bold text-gray-800">🕒 ประวัติคดีส่วนตัว</h2>
+                            <p className="text-xs text-gray-500 mt-1">ข้อมูลที่แสดงอยู่นี้เป็นความลับส่วนบุคคล</p>
+                        </div>
                         <button onClick={fetchAllHistory} className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold py-2 px-4 rounded-lg w-full sm:w-auto">🔄 รีเฟรช</button>
                     </div>
                     <div className="overflow-x-auto">
@@ -730,7 +756,7 @@
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr><td colSpan="5" className="text-center py-8 text-gray-400 italic">ไม่มีประวัติ</td></tr>
+                                    <tr><td colSpan="5" className="text-center py-8 text-gray-400 italic">ไม่มีประวัติการบันทึกคดีส่วนตัว</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -740,7 +766,6 @@
 
             return (
                 <div className="min-h-screen relative pb-10">
-                    {/* Header โลโก้ตำรวจ และปุ่มออกระบบ */}
                     <header className="bg-[#0f172a] text-white shadow-md">
                         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
@@ -749,38 +774,39 @@
                                 </div>
                                 <div className="text-center md:text-left">
                                     <h1 className="text-lg md:text-xl font-bold text-[#facc15]">ระบบบริหารงานสืบสวนคดีอาญา</h1>
-                                    
-                                    <p className="text-xs md:text-sm text-gray-300">กก.1 บก.ปพ.</p>
+                                    <p className="text-xs md:text-sm text-gray-300">กก.1 บก.ปพ. | โหมดพื้นที่ส่วนตัว (Private)</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                {!isSharedView && (
-                                    <button onClick={loadDemoData} className="hidden sm:block bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors border border-gray-600">
-                                        🔄 ข้อมูลจำลอง
+                            <div className="flex flex-col items-end gap-2">
+                                <div className="text-xs text-gray-400">เข้าสู่ระบบโดย: <span className="text-green-400 font-bold">{user ? user.email : 'ไม่ระบุ'}</span></div>
+                                <div className="flex gap-2">
+                                    {!isSharedView && (
+                                        <button onClick={loadDemoData} className="hidden sm:block bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-gray-600">
+                                            🔄 ข้อมูลจำลอง
+                                        </button>
+                                    )}
+                                    <button onClick={onLogout} className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-md transition-colors flex items-center gap-2 border border-red-500">
+                                        🚪 ออกจากระบบ
                                     </button>
-                                )}
-                                {/* ปุ่มออกจากระบบ */}
-                                <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md transition-colors flex items-center gap-2 border border-red-500">
-                                    🚪 ออกจากระบบ
-                                </button>
+                                </div>
                             </div>
                         </div>
                     </header>
 
                     {isSharedView && (
-                        <div className="bg-blue-100 border-b border-blue-200 text-blue-800 px-4 py-2 text-center text-xs md:text-sm font-semibold shadow-sm">
-                            👁️ ขณะนี้คุณกำลังดูข้อมูลในโหมดผู้เยี่ยมชม (สามารถแก้ไขและแชร์ร่วมกันได้)
+                        <div className="bg-yellow-50 border-b border-yellow-200 text-yellow-800 px-4 py-3 text-center text-xs md:text-sm shadow-sm flex flex-col items-center justify-center gap-2">
+                            <span className="font-bold text-base">👁️ ขณะนี้คุณกำลังดูข้อมูลในลิงก์ที่ถูก "แชร์" มา</span>
+                            <span>(การบันทึกจะบันทึกทับไฟล์ส่วนกลางนี้ ไม่กระทบกับคลังส่วนตัวของคุณ หากต้องการสร้างใหม่ ให้ล้างฟอร์ม)</span>
                         </div>
                     )}
 
                     <main className="max-w-7xl mx-auto px-2 md:px-6 py-4 md:py-6">
-                        {/* แถบเมนูแบบปัดซ้ายขวาได้บนมือถือ */}
                         <div className="flex border-b border-gray-200 mb-4 bg-white rounded-t-xl px-2 pt-2 shadow-sm overflow-x-auto hide-scrollbar snap-x">
                             <button onClick={() => setActiveTab('checklist')} className={`px-4 py-3 text-sm md:text-base whitespace-nowrap snap-start shrink-0 rounded-t-lg ${activeTab === 'checklist' ? 'tab-active' : 'tab-inactive'}`}>📝 Checklist</button>
                             <button onClick={() => setActiveTab('mindmap')} className={`px-4 py-3 text-sm md:text-base whitespace-nowrap snap-start shrink-0 rounded-t-lg ${activeTab === 'mindmap' ? 'tab-active' : 'tab-inactive'}`}>🕸️ Mind Map</button>
                             <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-3 text-sm md:text-base whitespace-nowrap snap-start shrink-0 rounded-t-lg ${activeTab === 'dashboard' ? 'tab-active' : 'tab-inactive'}`}>📊 Dashboard</button>
                             <button onClick={() => setActiveTab('search')} className={`px-4 py-3 text-sm md:text-base whitespace-nowrap snap-start shrink-0 rounded-t-lg ${activeTab === 'search' ? 'tab-active' : 'tab-inactive'}`}>🔍 ค้นหา</button>
-                            <button onClick={() => setActiveTab('history')} className={`px-4 py-3 text-sm md:text-base whitespace-nowrap snap-start shrink-0 rounded-t-lg ${activeTab === 'history' ? 'tab-active' : 'tab-inactive'}`}>🕒 ประวัติ</button>
+                            <button onClick={() => setActiveTab('history')} className={`px-4 py-3 text-sm md:text-base whitespace-nowrap snap-start shrink-0 rounded-t-lg ${activeTab === 'history' ? 'tab-active' : 'tab-inactive'}`}>🕒 คลังส่วนตัว</button>
                         </div>
 
                         <div>
@@ -792,7 +818,6 @@
                         </div>
                     </main>
 
-                    {/* Modals ย่อขนาดให้พอดีจอ */}
                     {modalConfig.isOpen && (
                         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                             <div className="bg-white rounded-xl shadow-2xl max-w-sm md:max-w-md w-full p-6 text-center md:text-left">
@@ -818,24 +843,37 @@
             );
         }
 
-        // ================================================================
-        // LOGIN GATE
-        // ================================================================
-        function LoginScreen({ onLogin }) {
-            const [username, setUsername] = React.useState('');
+        function LoginScreen({ onLoginSuccess }) {
+            const [mode, setMode] = React.useState('login'); // 'login' or 'register'
+            const [email, setEmail] = React.useState('');
             const [password, setPassword] = React.useState('');
             const [error, setError] = React.useState('');
+            const [isLoading, setIsLoading] = React.useState(false);
             const [showPassword, setShowPassword] = React.useState(false);
 
-            const handleLogin = (e) => {
+            const handleSubmit = async (e) => {
                 e.preventDefault();
                 setError('');
-                if (username === 'cibssd01' && password === 'cibssd01*') {
-                    sessionStorage.setItem('cibssd_logged_in', 'true');
-                    onLogin();
-                } else {
-                    setError('ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง');
-                    setPassword('');
+                setIsLoading(true);
+                
+                try {
+                    const fb = await window.initFirebase();
+                    if (mode === 'login') {
+                        await fb.signInWithEmailAndPassword(fb.auth, email, password);
+                    } else {
+                        await fb.createUserWithEmailAndPassword(fb.auth, email, password);
+                        showModal('สมัครสมาชิกสำเร็จ', 'ระบบได้ทำการสร้างบัญชีให้คุณเรียบร้อยแล้ว');
+                    }
+                    // การเข้าสู่ระบบสำเร็จจะถูกจัดการโดย onAuthStateChanged ใน component App
+                } catch (err) {
+                    let errorMsg = err.message;
+                    if(err.code === 'auth/invalid-email') errorMsg = 'รูปแบบอีเมลไม่ถูกต้อง';
+                    if(err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') errorMsg = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+                    if(err.code === 'auth/email-already-in-use') errorMsg = 'อีเมลนี้ถูกใช้งานแล้ว';
+                    if(err.code === 'auth/weak-password') errorMsg = 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร';
+                    setError(errorMsg);
+                } finally {
+                    setIsLoading(false);
                 }
             };
 
@@ -843,31 +881,37 @@
                 <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
                     <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
                         <div className="bg-[#0f172a] px-6 py-7 text-center">
-    <div className="mx-auto mb-4 bg-white p-2 rounded-full w-20 h-20 flex items-center justify-center shadow-lg">
-        <img
-    src="https://i.ibb.co/QFc4HfnW/AI.png"
-    alt="Logo"
-    className="h-16 w-16 object-contain"
-/>
-    </div>
-    <h1 className="text-xl font-bold text-[#facc15]">ระบบบริหารงานสืบสวนคดีอาญา</h1>
-                            <p className="text-sm text-slate-300 mt-1">กองกำกับการ 1 กองบังคับการปฏิบัติการพิเศษ</p>
+                            <div className="mx-auto mb-4 bg-white p-2 rounded-full w-20 h-20 flex items-center justify-center shadow-lg">
+                                <img src="https://i.ibb.co/QFc4HfnW/AI.png" alt="Logo" className="h-16 w-16 object-contain" />
+                            </div>
+                            <h1 className="text-xl font-bold text-[#facc15]">ระบบบริหารงานสืบสวนคดีอาญา</h1>
+                            <p className="text-sm text-slate-300 mt-1">พื้นที่ปฏิบัติงานส่วนบุคคล (Private Workspace)</p>
                         </div>
-                        <form onSubmit={handleLogin} className="p-6 sm:p-8">
+                        
+                        <div className="flex border-b">
+                            <button onClick={()=>setMode('login')} className={`flex-1 py-3 text-sm font-bold ${mode==='login' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400'}`}>เข้าสู่ระบบ</button>
+                            <button onClick={()=>setMode('register')} className={`flex-1 py-3 text-sm font-bold ${mode==='register' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400'}`}>ลงทะเบียนผู้ใช้ใหม่</button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-6 sm:p-8">
                             <div className="mb-4">
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">Username</label>
-                                <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="กรอก Username" required className="w-full border border-slate-300 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500" />
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">อีเมล (Email)</label>
+                                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="เช่น officer@cib.go.th" required className="w-full border border-slate-300 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500" />
                             </div>
                             <div className="mb-4 relative">
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
-                                <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="กรอก Password" required className="w-full border border-slate-300 rounded-lg px-4 py-3 pr-16 outline-none focus:ring-2 focus:ring-blue-500" />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-9 text-xs font-semibold text-slate-500">
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">รหัสผ่าน (Password)</label>
+                                <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="อย่างน้อย 6 ตัวอักษร" required minLength="6" className="w-full border border-slate-300 rounded-lg px-4 py-3 pr-16 outline-none focus:ring-2 focus:ring-blue-500" />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-9 text-xs font-semibold text-slate-500 p-2">
                                     {showPassword ? 'ซ่อน' : 'แสดง'}
                                 </button>
                             </div>
                             {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-semibold">⚠️ {error}</div>}
-                            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg">🔐 เข้าสู่ระบบ</button>
-                            <div className="mt-6 text-center text-xs text-slate-400">© 2026 ระบบบริหารงานสืบสวนคดีอาญา</div>
+                            
+                            <button type="submit" disabled={isLoading} className={`w-full text-white font-bold py-3 rounded-lg shadow-lg ${isLoading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                                {isLoading ? 'กำลังประมวลผล...' : (mode === 'login' ? '🔐 เข้าสู่ระบบ' : '📝 สมัครสมาชิก')}
+                            </button>
+                            
+                            <div className="mt-6 text-center text-xs text-slate-400">ข้อมูลจะถูกจัดเก็บแบบส่วนตัวเข้ารหัส ไม่เปิดเผยต่อผู้ใช้อื่น</div>
                         </form>
                     </div>
                 </div>
@@ -875,9 +919,46 @@
         }
 
         function App() {
-            const [loggedIn, setLoggedIn] = React.useState(() => sessionStorage.getItem('cibssd_logged_in') === 'true');
-            if (!loggedIn) return <LoginScreen onLogin={() => setLoggedIn(true)} />;
-            return <ChecklistApp />;
+            const [user, setUser] = React.useState(null);
+            const [isCheckingAuth, setIsCheckingAuth] = React.useState(true);
+
+            React.useEffect(() => {
+                const setupAuth = async () => {
+                    try {
+                        const fb = await window.initFirebase();
+                        fb.onAuthStateChanged(fb.auth, (currentUser) => {
+                            // ป้องกันการล็อคอินแบบ Anonymous
+                            if (currentUser && currentUser.isAnonymous === false) {
+                                setUser(currentUser);
+                            } else {
+                                setUser(null);
+                            }
+                            setIsCheckingAuth(false);
+                        });
+                    } catch (e) {
+                        console.error("Auth Setup Error", e);
+                        setIsCheckingAuth(false);
+                    }
+                };
+                setupAuth();
+            }, []);
+
+            const handleLogout = async () => {
+                const fb = await window.initFirebase();
+                if(fb) {
+                    await fb.signOut(fb.auth);
+                }
+            };
+
+            if (isCheckingAuth) {
+                return <div className="min-h-screen flex items-center justify-center bg-slate-100"><div className="text-xl font-bold text-gray-500">กำลังตรวจสอบสถานะ...</div></div>;
+            }
+
+            if (!user) {
+                return <LoginScreen />;
+            }
+
+            return <ChecklistApp user={user} onLogout={handleLogout} />;
         }
 
         ReactDOM.render(<App />, document.getElementById('root'));
