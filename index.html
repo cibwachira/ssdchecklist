@@ -7,7 +7,7 @@
     
     <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
@@ -21,7 +21,7 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; scroll-behavior: smooth; }
         #network-container { width: 100%; height: 600px; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #ffffff; }
-        @media (max-width: 768px) { #network-container { height: 400px; } }
+        @media (max-width: 768px) { #network-container { height: 450px; } }
     </style>
 
     <script type="module">
@@ -29,16 +29,15 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, addDoc, setDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // *** ใส่ Firebase Config ของคุณที่นี่ ***
         const firebaseConfig = {
-  apiKey: "AIzaSyCLXW_cr-5VuaQqR3wHNtBtHe5YJ77buno",
-  authDomain: "ssdinvestigation.firebaseapp.com",
-  projectId: "ssdinvestigation",
-  storageBucket: "ssdinvestigation.firebasestorage.app",
-  messagingSenderId: "766454429471",
-  appId: "1:766454429471:web:0c39c356899a8b5013222a",
-  measurementId: "G-102F02SH8Q"
-};
+            apiKey: "AIzaSyCLXW_cr-5VuaQqR3wHNtBtHe5YJ77buno",
+            authDomain: "ssdinvestigation.firebaseapp.com",
+            projectId: "ssdinvestigation",
+            storageBucket: "ssdinvestigation.firebasestorage.app",
+            messagingSenderId: "766454429471",
+            appId: "1:766454429471:web:0c39c356899a8b5013222a",
+            measurementId: "G-102F02SH8Q"
+        };
 
         window.initFirebase = async () => {
             try {
@@ -54,7 +53,7 @@
     </script>
 
     <script>
-        window.CASE_STORAGE_KEY = 'ssd_investigation_cases_private_v1';
+        window.CASE_STORAGE_KEY = 'ssd_investigation_cases_private_v2';
         window.getLocalCases = function() {
             try { return JSON.parse(localStorage.getItem(window.CASE_STORAGE_KEY)) || []; } 
             catch (e) { return []; }
@@ -116,6 +115,10 @@
             
             const [isSharedView, setIsSharedView] = React.useState(false);
             const [isSharing, setIsSharing] = React.useState(false);
+
+            // Mind Map Controls
+            const [pdfOrientation, setPdfOrientation] = React.useState('landscape');
+            const [mindMapScale, setMindMapScale] = React.useState('fit');
             
             const [modalConfig, setModalConfig] = React.useState({ isOpen: false, title: '', message: '', type: 'info' });
             const [confirmModal, setConfirmModal] = React.useState({ isOpen: false, title: '', message: '', onConfirm: null });
@@ -128,14 +131,11 @@
             const fetchAllHistory = async () => {
                 try {
                     const localList = window.getLocalCases().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-                    
                     const fb = await window.initFirebase();
                     if (!fb || !user) {
                          setAllCasesHistory(localList);
                          return;
                     }
-                    
-                    // ระบบดึงข้อมูลจากโฟลเดอร์ส่วนตัว
                     const privateCasesRef = fb.collection(fb.db, 'users', user.uid, 'cases');
                     const snapshot = await fb.getDocs(privateCasesRef);
                     const remoteList = [];
@@ -143,7 +143,6 @@
                         remoteList.push({ id: docSnap.id, ...docSnap.data(), storage: 'firebase' });
                     });
                     remoteList.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
-                    
                     setAllCasesHistory(remoteList.length > 0 ? remoteList : localList);
                 } catch (e) {
                     console.error("Fetch history error:", e);
@@ -156,15 +155,12 @@
                     try {
                         const urlParams = new URLSearchParams(window.location.search);
                         const sharedCaseId = urlParams.get('caseId');
-
                         if (sharedCaseId) {
                             try {
                                 const fb = await window.initFirebase();
                                 if (!fb) { showModal('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error'); return; }
-                                
                                 const docRef = fb.doc(fb.db, 'public_cases', sharedCaseId);
                                 const docSnap = await fb.getDoc(docRef);
-
                                 if (docSnap.exists()) {
                                     const data = docSnap.data();
                                     setCurrentCaseId(sharedCaseId);
@@ -173,7 +169,6 @@
                                     setOfficerName(data.officerName || '');
                                     setFormData(data.formData || {});
                                     if (data.categories) setCategories(data.categories);
-                                    
                                     setIsSharedView(true);
                                     setActiveTab('mindmap');
                                     showModal('โหลดข้อมูลสำเร็จ', 'เปิดข้อมูลร่วมกันแล้ว — ผู้ใช้งานที่ได้รับลิงก์สามารถแก้ไขและบันทึกข้อมูลได้', 'success');
@@ -232,10 +227,8 @@
                     showModal('แจ้งเตือน', 'กรุณาวางข้อความที่ต้องการแยกลงในกล่องก่อนครับ', 'warning');
                     return;
                 }
-                
                 let extractedCount = 0;
                 const newFormData = { ...formData };
-
                 const addData = (fieldId, value) => {
                     if(!newFormData[fieldId]) newFormData[fieldId] = [];
                     newFormData[fieldId] = newFormData[fieldId].filter(v => v !== '');
@@ -244,19 +237,14 @@
                         extractedCount++;
                     }
                 };
-
                 const idMatch = smartText.match(/\b\d{1}-?\d{4}-?\d{5}-?\d{2}-?\d{1}\b/g) || smartText.match(/\b\d{13}\b/g);
                 if(idMatch) idMatch.forEach(id => addData('1_3', id));
-
                 const phoneMatch = smartText.match(/\b0[689]\d{1}-?\d{3}-?\d{4}\b/g) || smartText.match(/\b0[689]\d{8}\b/g);
                 if(phoneMatch) phoneMatch.forEach(ph => addData('9_3', ph));
-
                 const nameMatch = smartText.match(/(?:นาย|นาง|นางสาว)\s+[ก-๙]+\s+[ก-๙]+/g);
                 if(nameMatch) nameMatch.forEach(name => addData('1_1', name));
-
                 const carMatch = smartText.match(/[1-9]?[ก-ฮ]{1,2}\s*\d{1,4}\s*(?:กทม|กรุงเทพมหานคร|[ก-๙]+)/g);
                 if(carMatch) carMatch.forEach(car => addData('6_1', car));
-
                 const bankMatch = smartText.match(/\b\d{3}-?\d{1}-?\d{5}-?\d{1}\b/g) || smartText.match(/\b\d{10,12}\b/g);
                 if(bankMatch) bankMatch.forEach(bank => addData('11_2', bank));
 
@@ -280,13 +268,11 @@
                     const localId = currentCaseId || ('local_' + now + '_' + Math.random().toString(36).slice(2, 8));
                     const payload = { targetName: targetName.trim(), caseNumber: caseNumber.trim(), officerName: officerName.trim(), formData, categories, updatedAt: now };
 
-                    // Save local backup
                     const localSaved = window.saveLocalCase(payload, localId);
                     setCurrentCaseId(currentCaseId || localSaved.id);
 
                     const fb = await window.initFirebase();
                     let onlineSaved = false;
-                    
                     if (fb && user) {
                         if (isSharedView) {
                             const publicDocRef = fb.doc(fb.db, 'public_cases', currentCaseId);
@@ -318,10 +304,8 @@
                     showModal('บันทึกสำเร็จ', onlineSaved ? 'บันทึกข้อมูลลงฐานข้อมูลส่วนตัวสำเร็จ' : 'บันทึกข้อมูลลงในเครื่องแล้ว', 'success');
                 } catch (error) {
                     setIsSaving(false); 
-                    
-                    // *แก้ไขข้อความแจ้งเตือนให้ชัดเจนเมื่อติดปัญหา Permission*
                     if (error.code === 'permission-denied') {
-                        showModal('ไม่ได้รับสิทธิ์ในการบันทึกข้อมูล', 'ตรวจพบปัญหา "Missing or insufficient permissions"\n\nวิธีแก้ไข:\n1. เข้าไปที่ Firebase Console\n2. เลือกเมนู Firestore Database > แท็บ Rules\n3. คัดลอกโค้ด Rule ด้านล่างนี้ไปวางทับของเดิม:\n\nrules_version = \'2\';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /users/{userId}/cases/{document=**} {\n      allow read, write: if request.auth != null && request.auth.uid == userId;\n    }\n    match /public_cases/{document=**} {\n      allow read, write: if request.auth != null;\n    }\n  }\n}\n\n4. กดปุ่ม Publish แล้วกลับมากดบันทึกอีกครั้งครับ', 'error');
+                        showModal('ไม่ได้รับสิทธิ์ในการบันทึกข้อมูล', 'ตรวจพบปัญหา Permission Denied โปรดตรวจสอบ Firestore Rules', 'error');
                     } else {
                         showModal('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกได้: ' + error.message, 'error');
                     }
@@ -357,11 +341,7 @@
                         if (currentCaseId === caseId) setCurrentCaseId(null);
                         showModal('ลบสำเร็จ', 'ลบประวัติเป้าหมายออกจากระบบเรียบร้อยแล้ว', 'success');
                     } catch (error) {
-                        if (error.code === 'permission-denied') {
-                            showModal('ลบข้อมูลไม่ได้', 'เกิดข้อผิดพลาดเรื่อง Permission\nกรุณาตรวจสอบ Firestore Rules ของคุณ', 'error');
-                        } else {
-                            showModal('เกิดข้อผิดพลาด', 'ลบข้อมูลไม่ได้: ' + error.message, 'error');
-                        }
+                        showModal('เกิดข้อผิดพลาด', 'ลบข้อมูลไม่ได้: ' + error.message, 'error');
                     }
                 });
             };
@@ -371,10 +351,8 @@
                 try {
                     const fb = await window.initFirebase();
                     if (!fb || !user) { showModal('เตือน', 'ต้องเข้าสู่ระบบก่อนแชร์ออนไลน์', 'warning'); setIsSharing(false); return; }
-                    
                     const payload = { targetName, caseNumber, officerName, formData, categories, updatedAt: Date.now(), sharedBy: user.email };
                     let sharedDocRef;
-                    
                     if (isSharedView && currentCaseId && !String(currentCaseId).startsWith('local_')) {
                         sharedDocRef = fb.doc(fb.db, 'public_cases', currentCaseId);
                         await fb.setDoc(sharedDocRef, payload, { merge: true });
@@ -382,7 +360,6 @@
                         payload.createdAt = Date.now();
                         sharedDocRef = await fb.addDoc(fb.collection(fb.db, 'public_cases'), payload);
                     }
-                    
                     const shareUrl = `${window.location.origin}${window.location.pathname}?caseId=${sharedDocRef.id}`;
                     try { await navigator.clipboard.writeText(shareUrl); } catch (_) {
                         const textArea = document.createElement('textarea'); textArea.value = shareUrl;
@@ -390,11 +367,7 @@
                     }
                     showModal('สร้างลิงก์แชร์สำเร็จ! 🔗', `คัดลอกลิงก์เรียบร้อยแล้ว ส่งให้เพื่อนร่วมงานได้เลย\n\n${shareUrl}`, 'success');
                 } catch (error) {
-                    if (error.code === 'permission-denied') {
-                        showModal('แชร์ข้อมูลไม่ได้', 'คุณยังไม่ได้ตั้งค่า Firestore Rules สำหรับการแชร์\nโปรดตรวจสอบคู่มือการตั้งค่า Rule (ส่วน public_cases)', 'error');
-                    } else {
-                        showModal('เกิดข้อผิดพลาด', `แชร์ไม่ได้: ${error.message}`, 'error');
-                    }
+                    showModal('เกิดข้อผิดพลาด', `แชร์ไม่ได้: ${error.message}`, 'error');
                 } finally { setIsSharing(false); }
             };
 
@@ -427,35 +400,45 @@
             };
 
             const exportMindMapPDF = async () => {
-                const element = document.getElementById('mindmap-export-container');
                 const graphContainer = document.getElementById('network-container');
-                if (!element || !graphContainer) return;
+                if (!graphContainer) return;
                 try {
                     if (window.currentMindMapNetwork) {
-                        window.currentMindMapNetwork.fit({ animation: false }); window.currentMindMapNetwork.redraw();
+                        window.currentMindMapNetwork.fit({ animation: false }); 
+                        window.currentMindMapNetwork.redraw();
                     }
                     await new Promise(res => setTimeout(res, 800));
                     const canvas = graphContainer.querySelector('canvas');
                     const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = canvas.width * 2; tempCanvas.height = canvas.height * 2;
+                    tempCanvas.width = canvas.width * 2; 
+                    tempCanvas.height = canvas.height * 2;
                     const ctx = tempCanvas.getContext('2d');
-                    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                    ctx.fillStyle = '#ffffff'; 
+                    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
                     ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, tempCanvas.width, tempCanvas.height);
                     
                     const pdfWrapper = document.createElement('div');
-                    pdfWrapper.style.padding = '12px'; pdfWrapper.style.background = '#fff';
-                    pdfWrapper.innerHTML = `<div style="text-align:center;margin-bottom:10px;"><h2 style="margin:0;font-size:22px;">Mind Map - ${targetName||'เป้าหมาย'}</h2><p style="margin:0;color:#666;">เลขคดี: ${caseNumber||'-'}</p></div>`;
-                    const img = document.createElement('img'); img.src = tempCanvas.toDataURL('image/jpeg', 0.98); img.style.width = '100%';
-                    pdfWrapper.appendChild(img); document.body.appendChild(pdfWrapper);
+                    pdfWrapper.style.padding = '12px'; 
+                    pdfWrapper.style.background = '#fff';
+                    pdfWrapper.innerHTML = `<div style="text-align:center;margin-bottom:10px;"><h2 style="margin:0;font-size:22px;color:#ef4444;">Mind Map - ${targetName||'เป้าหมาย'}</h2><p style="margin:0;color:#666;">เลขคดี: ${caseNumber||'-'}</p></div>`;
+                    const img = document.createElement('img'); 
+                    img.src = tempCanvas.toDataURL('image/jpeg', 0.98); 
+                    img.style.width = '100%';
+                    pdfWrapper.appendChild(img); 
+                    document.body.appendChild(pdfWrapper);
                     
                     await html2pdf().set({
-                        margin: 6, filename: `MindMap_${targetName||'Target'}.pdf`,
-                        image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 },
-                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                        margin: 6, 
+                        filename: `MindMap_${targetName||'Target'}.pdf`,
+                        image: { type: 'jpeg', quality: 0.98 }, 
+                        html2canvas: { scale: 2 },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: pdfOrientation }
                     }).from(pdfWrapper).save();
                     pdfWrapper.remove();
-                    showModal('สำเร็จ', 'ส่งออกไฟล์ PDF เรียบร้อย', 'success');
-                } catch (err) { showModal('ข้อผิดพลาด', 'ส่งออก PDF ล้มเหลว', 'error'); }
+                    showModal('สำเร็จ', `ส่งออกไฟล์ PDF (${pdfOrientation === 'landscape' ? 'A4 แนวนอน' : 'A4 แนวตั้ง'}) เรียบร้อย`, 'success');
+                } catch (err) { 
+                    showModal('ข้อผิดพลาด', 'ส่งออก PDF ล้มเหลว', 'error'); 
+                }
             };
 
             const exportDashboardPDF = () => {
@@ -470,7 +453,15 @@
                 if (activeTab === 'mindmap') {
                     const container = document.getElementById('network-container');
                     if (!container) return;
-                    let nodesArray = [{ id: 'center', label: targetName || 'เป้าหมาย', shape: 'dot', size: 25, color: { background: '#ef4444', border: '#b91c1c' }, font: { color: '#ffffff', size: 16, bold: true }, shadow: true }];
+                    let nodesArray = [{ 
+                        id: 'center', 
+                        label: targetName || 'เป้าหมาย', 
+                        shape: 'dot', 
+                        size: 30, 
+                        color: { background: '#ef4444', border: '#b91c1c' }, 
+                        font: { color: '#ef4444', size: 18, bold: true, face: 'Sarabun' }, 
+                        shadow: true 
+                    }];
                     let edgesArray = [];
                     categories.forEach(cat => {
                         let hasData = false;
@@ -480,22 +471,57 @@
                                 hasData = true;
                                 values.forEach((val, idx) => {
                                     const nodeId = `val_${field.id}_${idx}`;
-                                    nodesArray.push({ id: nodeId, label: `${field.label}:\n${val}`, shape: 'box', color: { background: '#eff6ff', border: '#bfdbfe' }, font: { size: 12 } });
-                                    edgesArray.push({ from: cat.id, to: nodeId, color: { color: '#94a3b8' } });
+                                    nodesArray.push({ 
+                                        id: nodeId, 
+                                        label: `${field.label}:\n${val}`, 
+                                        shape: 'box', 
+                                        color: { background: '#ffffff', border: '#cbd5e1' }, 
+                                        font: { size: 13, face: 'Sarabun', color: '#1e293b' },
+                                        margin: 10,
+                                        shadow: { enabled: true, size: 3, x: 2, y: 2 }
+                                    });
+                                    edgesArray.push({ from: cat.id, to: nodeId, color: { color: '#94a3b8' }, width: 1.5 });
                                 });
                             }
                         });
                         if (hasData) {
-                            nodesArray.push({ id: cat.id, label: cat.title, shape: 'box', color: { background: '#fef08a', border: '#facc15' }, font: { bold: true } });
-                            edgesArray.push({ from: 'center', to: cat.id, width: 2, color: { color: '#64748b' } });
+                            nodesArray.push({ 
+                                id: cat.id, 
+                                label: cat.title, 
+                                shape: 'box', 
+                                color: { background: '#fef08a', border: '#eab308' }, 
+                                font: { bold: true, face: 'Sarabun', size: 14, color: '#713f12' },
+                                margin: 12,
+                                shadow: true 
+                            });
+                            edgesArray.push({ from: 'center', to: cat.id, width: 3, color: { color: '#475569' } });
                         }
                     });
-                    window.currentMindMapNetwork = new vis.Network(container, 
+
+                    if (window.currentMindMapNetwork) {
+                        window.currentMindMapNetwork.destroy();
+                    }
+
+                    const network = new vis.Network(container, 
                         { nodes: new vis.DataSet(nodesArray), edges: new vis.DataSet(edgesArray) }, 
-                        { layout: { improvedLayout: true }, physics: { stabilization: false, barnesHut: { springLength: 150 } } }
+                        { 
+                            layout: { improvedLayout: true }, 
+                            physics: { stabilization: true, barnesHut: { springLength: 160, gravitationalConstant: -3500 } },
+                            interaction: { zoomView: true, dragView: true }
+                        }
                     );
+
+                    window.currentMindMapNetwork = network;
+
+                    // Apply zoom scale if changed
+                    if (mindMapScale === 'fit') {
+                        setTimeout(() => network.fit({ animation: { duration: 500, easingFunction: 'easeInOutQuad' } }), 300);
+                    } else {
+                        const scaleVal = parseFloat(mindMapScale);
+                        network.moveTo({ scale: scaleVal });
+                    }
                 }
-            }, [activeTab, formData, categories, targetName]);
+            }, [activeTab, formData, categories, targetName, mindMapScale]);
 
             const renderChecklist = () => (
                 <div className="space-y-4 md:space-y-6">
@@ -579,16 +605,44 @@
 
             const renderMindMap = () => (
                 <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-100">
-                    <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
+                    <div className="flex flex-col lg:flex-row justify-between items-center mb-4 gap-3 bg-slate-50 p-3 rounded-lg border">
                         <h2 className="text-lg md:text-xl font-bold text-gray-800">แผนผังความเชื่อมโยง</h2>
-                        <div className="flex gap-2 w-full sm:w-auto">
-                            <button onClick={handleShareOnline} className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-semibold">🔗 แชร์</button>
-                            <button onClick={exportMindMapPDF} className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-semibold">📄 PDF</button>
+                        
+                        {/* Control Toolbar */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1 text-xs font-semibold text-gray-700">
+                                <span>ขนาด PDF:</span>
+                                <select value={pdfOrientation} onChange={e => setPdfOrientation(e.target.value)} className="border rounded px-2 py-1 bg-white text-xs">
+                                    <option value="landscape">A4 แนวนอน</option>
+                                    <option value="portrait">A4 แนวตั้ง</option>
+                                </select>
+                            </div>
+
+                            <div className="flex items-center gap-1 text-xs font-semibold text-gray-700">
+                                <span>ซูม/ย่อ:</span>
+                                <select value={mindMapScale} onChange={e => setMindMapScale(e.target.value)} className="border rounded px-2 py-1 bg-white text-xs">
+                                    <option value="fit">Fit Map (พอดีจอ)</option>
+                                    <option value="0.2">20%</option>
+                                    <option value="0.4">40%</option>
+                                    <option value="0.6">60%</option>
+                                    <option value="0.8">80%</option>
+                                    <option value="1.0">100%</option>
+                                    <option value="1.2">120%</option>
+                                    <option value="1.4">140%</option>
+                                    <option value="1.6">160%</option>
+                                    <option value="1.8">180%</option>
+                                    <option value="2.0">200%</option>
+                                </select>
+                            </div>
+
+                            <button onClick={handleShareOnline} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">🔗 แชร์</button>
+                            <button onClick={exportMindMapPDF} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">📄 พิมพ์ PDF</button>
                         </div>
                     </div>
+
                     <div id="mindmap-export-container" className="p-2 md:p-4 bg-white">
                         <div className="mb-4 text-center">
-                            <h3 className="text-xl md:text-2xl font-bold text-gray-800">{targetName || "ชื่อเป้าหมาย"}</h3>
+                            <h3 className="text-xl md:text-2xl font-bold text-red-600">{targetName || "ชื่อเป้าหมาย"}</h3>
                             <p className="text-xs md:text-sm text-gray-600">คดี: {caseNumber || "-"} | จนท: {officerName || "-"}</p>
                         </div>
                         <div id="network-container"></div>
@@ -770,7 +824,6 @@
                         </div>
                     </main>
 
-                    {/* Modals */}
                     {modalConfig.isOpen && (
                         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                             <div className={`bg-white rounded-xl shadow-2xl max-w-sm md:max-w-lg w-full p-6 text-center md:text-left border-t-4 ${modalConfig.type === 'error' ? 'border-red-500' : modalConfig.type === 'warning' ? 'border-yellow-500' : 'border-blue-500'}`}>
