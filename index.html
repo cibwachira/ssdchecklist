@@ -20,7 +20,7 @@
         .tab-inactive:hover { color: #374151; border-bottom: 3px solid #d1d5db; background-color: #f9fafb; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; scroll-behavior: smooth; }
-        #network-container { width: 100%; height: 600px; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #ffffff; }
+        #network-container { width: 100%; height: 650px; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #ffffff; }
         @media (max-width: 768px) { #network-container { height: 450px; } }
     </style>
 
@@ -96,10 +96,10 @@
             { id: 'cat15', title: "15. ข้อมูลการขอใช้ไฟฟ้า/ประปา", fields: [{id: '15_1', label: 'ข้อมูลผู้จดทะเบียน'}, {id: '15_2', label: 'ที่ตั้งสถานที่'}, {id: '15_3', label: 'ผู้ชำระค่าไฟ/น้ำ'}, {id: '15_4', label: 'ช่องทางการชำระ'}] }
         ];
 
-        // Helper function for text wrapping to keep nodes neat and readable
+        // Improved text wrapping helper function for sharp node labels
         function wrapText(text, maxLineLength = 32) {
             if (!text) return '';
-            const words = text.split(' ');
+            const words = String(text).split(' ');
             let lines = [];
             let currentLine = '';
             words.forEach(word => {
@@ -475,7 +475,7 @@
                         id: 'center', 
                         label: wrapText(targetName || 'เป้าหมาย', 20), 
                         shape: 'dot', 
-                        size: 35, 
+                        size: 38, 
                         color: { background: '#ef4444', border: '#b91c1c' }, 
                         font: { color: '#ffffff', size: 18, bold: true, face: 'Sarabun' }, 
                         shadow: true 
@@ -489,14 +489,15 @@
                                 hasData = true;
                                 values.forEach((val, idx) => {
                                     const nodeId = `val_${field.id}_${idx}`;
-                                    const formattedLabel = wrapText(`${field.label}: ${val}`, 34);
+                                    // Wrap text strictly to 28 characters per line for high readability without overlapping
+                                    const formattedLabel = wrapText(`${field.label}: ${val}`, 28);
                                     nodesArray.push({ 
                                         id: nodeId, 
                                         label: formattedLabel, 
                                         shape: 'box', 
                                         color: { background: '#ffffff', border: '#cbd5e1' }, 
                                         font: { size: 13, face: 'Sarabun', color: '#1e293b', multi: true },
-                                        margin: 12,
+                                        margin: 14,
                                         shadow: { enabled: true, size: 3, x: 2, y: 2 }
                                     });
                                     edgesArray.push({ from: cat.id, to: nodeId, color: { color: '#94a3b8' }, width: 1.5 });
@@ -525,7 +526,7 @@
                         { nodes: new vis.DataSet(nodesArray), edges: new vis.DataSet(edgesArray) }, 
                         { 
                             layout: { improvedLayout: true }, 
-                            physics: { stabilization: true, barnesHut: { springLength: 180, gravitationalConstant: -4000 } },
+                            physics: { stabilization: true, barnesHut: { springLength: 220, gravitationalConstant: -5000 } },
                             interaction: { zoomView: true, dragView: true }
                         }
                     );
