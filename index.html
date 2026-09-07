@@ -477,7 +477,7 @@
                         shape: 'dot', 
                         size: 35, 
                         color: { background: '#ef4444', border: '#b91c1c' }, 
-                        font: { color: '#ffffff', size: 18, bold: true, face: 'Sarabun' }, 
+                        font: { color: '#ef4444', size: 18, bold: true, face: 'Sarabun' }, 
                         shadow: true 
                     }];
                     let edgesArray = [];
@@ -962,7 +962,7 @@
                 if (fb) await fb.signOut(fb.auth);
             };
 
-            if (isInitializing) return <div style={{fontFamily:'Sarabun', padding:'40px', textAlign:'center', color:'#475569'}}>กำลังตรวจสอบสิทธิ์การเข้าใช้งาน...</div>;
+            if (isInitializing) return <div style={{fontFamily:'Sarabun', padding:'40px', textAlign:'center', color:#475569}}>กำลังตรวจสอบสิทธิ์การเข้าใช้งาน...</div>;
             if (!user) return <LoginScreen />;
             return <ChecklistApp user={user} onLogout={handleLogout} />;
         }
